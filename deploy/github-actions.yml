@@ -1,0 +1,55 @@
+# Alternative to the VPS: copy to .github/workflows/talon.yml in the repo that holds this tool.
+# State is kept on a dedicated `state` branch, so change detection survives between runs.
+name: talon
+
+on:
+  schedule:
+    - cron: "0 6 * * *"   # 09:00 MSK daily талон
+    - cron: "5 * * * *"   # hourly change watch
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: daily or watch
+        default: daily
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: talon
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore state
+        run: |
+          git fetch origin state:state 2>/dev/null || true
+          git checkout state -- state 2>/dev/null || mkdir -p state
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install httpx lxml dnspython protego PyYAML
+
+      - name: Run
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          MODE="${{ github.event.inputs.mode }}"
+          if [ -z "$MODE" ]; then
+            if [ "${{ github.event.schedule }}" = "0 6 * * *" ]; then MODE=daily; else MODE=watch; fi
+          fi
+          python -m talon --mode "$MODE"
+
+      - name: Save state
+        if: always()
+        run: |
+          git config user.name "talon"
+          git config user.email "talon@users.noreply.github.com"
+          git checkout -B state
+          git add -f state
+          git diff --cached --quiet || git commit -m "state: $(date -u +%F\ %T)"
+          git push -f origin state

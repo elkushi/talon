@@ -1,0 +1,9 @@
+.env
+config.yaml
+state/
+logs/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/

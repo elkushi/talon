@@ -1,0 +1,82 @@
+# Copy to config.yaml and describe your own sites. Nothing about your sites belongs in the code.
+#
+# Three kinds of site, each gets a different set of checks:
+#   marketing - a public site that has to rank in search. Everything is checked.
+#   portal    - a customer login page. Must work, must NOT be indexed, must not be tampered with.
+#   app       - a public web tool. No SEO checks beyond the page answering correctly.
+
+timezone: Europe/Moscow            # the report is timestamped in this zone
+
+defaults:                          # applied to every site unless the site overrides it
+  legacy_redirects: {}
+  key_pages: ["/"]
+
+sites:
+  - name: example.com
+    kind: marketing
+    canonical: https://www.example.com          # the one address everything should end up at
+    variants:                                   # every other way people reach the site
+      - http://example.com
+      - http://www.example.com
+      - https://example.com
+    key_pages: ["/", "/pricing/", "/contact/"]  # pages that must stay reachable and indexable
+    legacy_redirects:                           # old URLs that must keep redirecting
+      "/old-pricing/": "/pricing/"
+
+  - name: shop.example.com
+    kind: marketing
+    canonical: https://shop.example.com
+    variants: [http://shop.example.com]
+    sitemaps: ["https://shop.example.com/sitemap.xml"]   # only needed if robots.txt does not list it
+
+  - name: login.example.com
+    kind: portal
+    canonical: https://login.example.com
+    variants: [http://login.example.com]
+    key_pages: ["/auth"]
+
+  - name: status.example.com
+    kind: app
+    canonical: https://status.example.com
+    variants: [http://status.example.com]
+
+dns_domains:                       # registrable domains; subdomain hosts above are watched too
+  example.com:
+    expected: {}                   # leave empty to use the first run as the baseline, or pin them:
+    # expected:
+    #   A:  ["203.0.113.10"]
+    #   NS: ["ns1.example-dns.net.", "ns2.example-dns.net."]
+    #   MX: ["10 mail.example.com."]
+
+bots:
+  search: [Googlebot, YandexBot]   # these must never be blocked from a key page
+  ai: [GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot, Google-Extended]  # warn when newly blocked
+
+http:
+  retry_once_after_seconds: 5      # one retry before a host is called unreachable
+
+sitemap:
+  max_urls: 500                    # per site
+
+ssl:
+  warn_days: 21
+  fail_days: 7
+  allowed_issuers: []              # empty = the issuer seen on the first run becomes the baseline
+
+dns:
+  resolvers: ["1.1.1.1", "8.8.8.8"]
+  record_types: [A, AAAA, CNAME, MX, NS, TXT, CAA]
+  rdap: true                       # some ccTLDs publish no RDAP -> reported as info, not an error
+
+content:
+  ignore_patterns:                 # regexes stripped before hashing, so a clock is not "a change"
+    - 'Обновлено \d{2}\.\d{2}\.\d{4}'
+    - '"csrfToken":"[^"]+"'
+  allowed_external_domains:        # scripts, fonts, widgets the site is supposed to load
+    - mc.yandex.ru
+    - www.googletagmanager.com
+
+telegram:
+  chat_id_env: TELEGRAM_CHAT_ID    # the numeric chat id lives in the environment, never here
+  token_env: TELEGRAM_BOT_TOKEN
+  mention_on_fail: []              # e.g. ["@someone"] - tagged only when a check fails

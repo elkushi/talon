@@ -1,0 +1,12 @@
+# Talon. Install with: crontab deploy/crontab.example
+# The VPS must be separate from the servers hosting the sites, so an outage there is still reported.
+CRON_TZ=Europe/Moscow
+MAILTO=""
+
+# Daily талон at 09:00 Moscow time
+0 9 * * *  cd /opt/talon && .venv/bin/python -m talon --mode daily >> logs/cron.log 2>&1
+
+# Change watch every hour, 5 minutes past; sends only when something changed or broke
+5 * * * *  cd /opt/talon && .venv/bin/python -m talon --mode watch >> logs/cron.log 2>&1
+
+# If the VPS cron ignores CRON_TZ, drop it and use UTC: 09:00 MSK = 06:00 UTC
